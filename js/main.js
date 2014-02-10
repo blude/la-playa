@@ -1,8 +1,12 @@
 var App = (function() {
-    var map, self = this;
+    var map, self;
+
+    self = {};
 
     function setSelfLocation(e) {
-        var marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+        var marker;
+
+        marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
         self.currentLatLng = marker.getLatLng();
     }
 
@@ -11,7 +15,9 @@ var App = (function() {
     }
 
     function loadPlayas() {
-        var URL = getDataUrl('balneabilidade.geojson');
+        var URL;
+
+        URL = getDataUrl('balneabilidade.geojson');
 
         $.ajax({
             headers: {
@@ -20,11 +26,26 @@ var App = (function() {
             dataType: 'json',
             url: URL,
             success: function(geodata) {
-                var playas = L.mapbox.featureLayer(geodata).addTo(map);
+                var playas;
+
+                playas = L.mapbox.featureLayer(geodata).addTo(map);
                 self.playas = playas.toGeoJSON();
                 self.closestPlaya = getClosestPlaya();
-                if (isPlayaTooFar(self.closestPlaya.distance)) {
-                    alert('Tem certeza que tu tá na praia, brother?');
+
+                if (isTooFar(200)) {
+                    console.log('Tem certeza que tu tá na praia, brother?');
+                } else {
+                    switch (self.closestPlaya.properties.classificacao) {
+                        case 'próprio':
+                            console.log('próprio');
+                            break;
+                        case 'impróprio':
+                            console.log('impróprio');
+                            break;
+                        case 'interditado':
+                            console.log('interditado');
+                            break;
+                    }
                 }
             }
         });
@@ -46,13 +67,14 @@ var App = (function() {
     }
 
     function isUpToDate(analysis) {
-        var now = new Date();
+        var now;
+        now = new Date();
         return analysis['valid_until'] < now;
     }
 
-    function isPlayaTooFar(distance) {
-        var THRESHOLD = 100; // max distance in meters to a playa for it to be considered
-        return distance > THRESHOLD;
+    function isTooFar(threshold) {
+        threshold = threshold || 100; /* 100 is the default value */
+        return self.closestPlaya.distance > threshold;
     }
 
     function getLastAnalysis() {
@@ -60,21 +82,29 @@ var App = (function() {
     }
 
     function getClosestPlaya() {
-        var closest = -1,
-            distances = [];
+        var closest, distances, playaProps;
+
+        closest = -1;
+        distances = [];
 
         for (var i = 0, length = self.playas.features.length; i < length; i++) {
-            var playaCoords = self.playas.features[i].geometry.coordinates,
-                playaLatLng = L.marker([playaCoords[1], playaCoords[0]]).getLatLng(),
-                distanceToPlaya = self.currentLatLng.distanceTo(playaLatLng);
+            var playaCoords, playaLatLng, distanceToPlaya;
+
+            playaCoords = self.playas.features[i].geometry.coordinates;
+            playaLatLng = L.GeoJSON.coordsToLatLng(playaCoords);
+            distanceToPlaya = self.currentLatLng.distanceTo(playaLatLng);
+
             distances[i] = distanceToPlaya;
+
             if (closest === -1 || distanceToPlaya < distances[closest]) {
                 closest = i;
             }
         }
 
+        playaProps = self.playas.features[closest].properties;
+
         return {
-            name: self.playas.features[closest].properties['nome'],
+            properties: playaProps,
             distance: distances[closest]
         };
     }
@@ -96,7 +126,8 @@ var App = (function() {
             map = L.mapbox.map('map', 'examples.map-9ijuk24y');
             map.locate({ setView: true });
             bindEvents();
-        }
+        },
+        self: self
     };
 }());
 
