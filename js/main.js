@@ -32,20 +32,22 @@ var App = (function() {
                 self.playas = playas.toGeoJSON();
                 self.closestPlaya = getClosestPlaya();
 
-                if (isTooFar(200)) {
+                if (isTooFar()) {
                     console.log('Tem certeza que tu tá na praia, brother?');
-                } else {
+                } else if (isUpToDate()) {
                     switch (self.closestPlaya.properties.classificacao) {
                         case 'próprio':
-                            console.log('próprio');
+                            console.info('Próprio');
                             break;
                         case 'impróprio':
-                            console.log('impróprio');
+                            console.warn('Impróprio');
                             break;
                         case 'interditado':
-                            console.log('interditado');
+                            console.warn('Interditado');
                             break;
                     }
+                } else {
+                    console.log('Dados de balneabilidade desatualizados');
                 }
             }
         });
@@ -66,19 +68,20 @@ var App = (function() {
         });
     }
 
-    function isUpToDate(analysis) {
-        var now;
-        now = new Date();
-        return analysis['valid_until'] < now;
+    function isUpToDate() {
+        var today, validUntil;
+
+        today = moment();
+        validUntil = moment(self.historyData[0].valid_until);
+
+        return today.isBefore(validUntil) || today.isSame(validUntil, 'day');
     }
 
-    function isTooFar(threshold) {
-        threshold = threshold || 100; /* 100 is the default value */
+    function isTooFar() {
+        var threshold;
+
+        threshold = 2000; /* distance in meters */
         return self.closestPlaya.distance > threshold;
-    }
-
-    function getLastAnalysis() {
-        return self.historyData[0];
     }
 
     function getClosestPlaya() {
