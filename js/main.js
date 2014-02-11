@@ -1,6 +1,7 @@
 var App = (function() {
-    var map, self;
+    var map, self, threshold;
 
+    threshold = 500; /* distance in meters */
     self = {};
 
     function setSelfLocation(e) {
@@ -28,7 +29,21 @@ var App = (function() {
             success: function(geodata) {
                 var playas;
 
-                playas = L.mapbox.featureLayer(geodata).addTo(map);
+                playas = L.mapbox.featureLayer(geodata);
+                map.fitBounds(playas.getBounds());
+
+                L.geoJson(geodata, {
+                    onEachFeature: function(feature, layer) {
+                        var options;
+                        options = {
+                            stroke: false,
+                            color: feature.properties['marker-color'],
+                            fillColor: feature.properties['marker-color']
+                        }
+                        L.circle(L.GeoJSON.coordsToLatLng(feature.geometry.coordinates), threshold, options).addTo(map);
+                    }
+                });
+
                 self.playas = playas.toGeoJSON();
                 self.closestPlaya = getClosestPlaya();
 
@@ -78,9 +93,6 @@ var App = (function() {
     }
 
     function isTooFar() {
-        var threshold;
-
-        threshold = 2000; /* distance in meters */
         return self.closestPlaya.distance > threshold;
     }
 
@@ -127,7 +139,7 @@ var App = (function() {
     return {
         initMap: function() {
             map = L.mapbox.map('map', 'examples.map-9ijuk24y');
-            map.locate({ setView: true });
+            map.locate({ setView: false });
             bindEvents();
         },
         self: self
